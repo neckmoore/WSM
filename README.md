@@ -71,20 +71,5 @@ This project is licensed under the MIT License. See the LICENSE file for more de
 
 ---
 
-* Files to include in your repository for an Open-Source release:
 
-1. LICENSE:
-A text file containing the MIT license text with your name and the current year.
-
-2. .gitignore:
-A file to prevent temporary build files (bin, obj, staging, Output) from being uploaded.
-
-3. README.md:
-The documentation provided above.
-
-4. Source Code:
-All .csproj files, .cs source files, and configuration templates.
-
-5. Build Scripts:
-The .bat and .iss files required to compile the application and the installer.
 
