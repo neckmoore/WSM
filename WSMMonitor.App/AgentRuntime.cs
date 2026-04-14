@@ -38,7 +38,11 @@ public sealed class AgentRuntime : IDisposable
                 ? null
                 : _options.Sigma.SuppressionsPath;
             var suppressions = new SigmaSuppressionStore(suppressPath);
-            var pipeline = new PluginPipeline(plugins: null, sigma: new SigmaMvpEngine(), suppressions: suppressions);
+            var pipeline = new PluginPipeline(
+                plugins: null,
+                sigma: new SigmaMvpEngine(),
+                suppressions: suppressions,
+                sigmaEnabled: _options.Sigma.Enabled);
             _engine = new MetricsEngine(pipeline, _options);
             _history = new AgentHistoryStore(_options);
             _server = new DashboardServer(

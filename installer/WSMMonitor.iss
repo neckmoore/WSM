@@ -8,6 +8,13 @@
 #define StagingDir "staging"
 
 [Setup]
+; Microsoft Defender SmartScreen often blocks unsigned installers ("unrecognized app").
+; Reliable fix: sign setup.exe with an Authenticode certificate from a trusted CA (EV recommended),
+; then optionally submit for reputation. Inno can run SignTool after compile — see SignTool in Inno Help.
+; Example (adjust paths / thumbprint / timestamp URL):
+;   SignTool=signtool $p
+;   SignedUninstaller=yes
+; See Inno Setup topic "SignTool" — https://jrsoftware.org/ishelp/topic_setup_signtool.htm
 AppId={{B5E9F421-7C3A-4D8E-9F12-0123456789AB}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}

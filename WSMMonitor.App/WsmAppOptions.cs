@@ -53,6 +53,9 @@ public sealed class HistorySection
 
 public sealed class SigmaSection
 {
+    /// <summary>Enable Sigma processing for security events.</summary>
+    public bool Enabled { get; set; } = true;
+
     /// <summary>JSON suppressions file; empty uses rules/sigma/suppressions.json next to exe.</summary>
     public string SuppressionsPath { get; set; } = "";
 }

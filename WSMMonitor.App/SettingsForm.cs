@@ -24,6 +24,7 @@ public sealed class SettingsForm : Form
     private readonly TextBox _txtSqlitePath = new() { Width = 360 };
     private readonly Button _btnSqliteBrowse = new() { AutoSize = true };
     private readonly NumericUpDown _numRetention = new() { Minimum = 1, Maximum = 730, Width = 100 };
+    private readonly CheckBox _chkSigmaEnabled = new() { AutoSize = true };
     private readonly TextBox _txtSigmaPath = new() { Width = 360 };
     private readonly Button _btnSigmaBrowse = new() { AutoSize = true };
     private readonly CheckBox _chkLhm = new() { AutoSize = true };
@@ -248,16 +249,19 @@ public sealed class SettingsForm : Form
     {
         var p = new TabPage();
         RegisterText(p, "TabSigma");
-        var t = CreateThreeColumnGrid(1);
+        var t = CreateThreeColumnGrid(2);
+        RegisterText(_chkSigmaEnabled, "SettingsChkSigma");
+        _chkSigmaEnabled.Margin = new Padding(0, 4, 0, 4);
+        t.Controls.Add(_chkSigmaEnabled, 1, 0);
         var lbl = new Label { AutoSize = true, Anchor = AnchorStyles.Left | AnchorStyles.Top, Margin = new Padding(0, 6, 8, 6) };
         RegisterText(lbl, "SettingsLblSigmaFile");
-        t.Controls.Add(lbl, 0, 0);
+        t.Controls.Add(lbl, 0, 1);
         _txtSigmaPath.Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top;
         _txtSigmaPath.Margin = new Padding(0, 4, 8, 4);
-        t.Controls.Add(_txtSigmaPath, 1, 0);
+        t.Controls.Add(_txtSigmaPath, 1, 1);
         RegisterText(_btnSigmaBrowse, "SettingsBrowse");
         _btnSigmaBrowse.Margin = new Padding(0, 4, 0, 4);
-        t.Controls.Add(_btnSigmaBrowse, 2, 0);
+        t.Controls.Add(_btnSigmaBrowse, 2, 1);
         p.Controls.Add(t);
         return p;
     }
@@ -412,6 +416,7 @@ public sealed class SettingsForm : Form
         _chkSqlite.Checked = m.History.SqliteEnabled;
         _txtSqlitePath.Text = m.History.SqlitePath ?? "";
         _numRetention.Value = Math.Clamp(m.History.RetentionDays, (int)_numRetention.Minimum, (int)_numRetention.Maximum);
+        _chkSigmaEnabled.Checked = m.Sigma.Enabled;
         _txtSigmaPath.Text = m.Sigma.SuppressionsPath ?? "";
         var l = m.LibreHardwareMonitor;
         _chkLhm.Checked = l.Enabled;
@@ -466,6 +471,7 @@ public sealed class SettingsForm : Form
             },
             Sigma = new SigmaSection
             {
+                Enabled = _chkSigmaEnabled.Checked,
                 SuppressionsPath = _txtSigmaPath.Text.Trim()
             },
             LibreHardwareMonitor = l,
@@ -566,6 +572,41 @@ public sealed class SettingsForm : Form
             catch (Exception ex)
             {
                 sb.AppendLine($"{WsmLocalization.T("ConfigTestSensors")}: {WsmLocalization.T("ConfigTestFail")} ({ex.Message})");
+            }
+        }
+
+        if (!model.Sigma.Enabled)
+        {
+            sb.AppendLine($"{WsmLocalization.T("ConfigTestSigma")}: {WsmLocalization.T("ConfigTestSkipped")}");
+        }
+        else
+        {
+            try
+            {
+                var store = new Plugins.SigmaRuleStore();
+                var rules = store.LoadRules();
+                var engine = new Plugins.SigmaMvpEngine(store);
+                var events = new List<SecurityEventRow>
+                {
+                    new(
+                        DateTimeOffset.UtcNow.ToString("o"),
+                        "self-test",
+                        1,
+                        "Microsoft-Windows-Sysmon",
+                        @"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe",
+                        "powershell.exe -enc aQBlAHgA",
+                        "SYSTEM",
+                        "sigma self-test",
+                        1)
+                };
+                var detections = engine.Match(events);
+                var ok = rules.Count > 0 && detections.Count > 0;
+                sb.AppendLine(
+                    $"{WsmLocalization.T("ConfigTestSigma")}: {(ok ? WsmLocalization.T("ConfigTestOk") : WsmLocalization.T("ConfigTestFail"))} (rules={rules.Count}, detections={detections.Count})");
+            }
+            catch (Exception ex)
+            {
+                sb.AppendLine($"{WsmLocalization.T("ConfigTestSigma")}: {WsmLocalization.T("ConfigTestFail")} ({ex.Message})");
             }
         }
 

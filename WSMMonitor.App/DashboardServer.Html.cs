@@ -116,6 +116,7 @@ table.data-like tbody tr:nth-child(even){background:rgba(255,255,255,.02)}
 </div>
 <div class="zb-toolbar">
   <button type="button" class="tmb on" id="btnReport" data-i18n="btnQuickReport">Сформировать отчет</button>
+  <button type="button" class="tmb" id="btnTimeline" data-i18n="btnTimeline">Таймлайн</button>
   <span class="badge mono" id="ts">-</span>
 </div>
 <div class="zb-page" id="zbPage">
@@ -137,9 +138,6 @@ table.data-like tbody tr:nth-child(even){background:rgba(255,255,255,.02)}
   <div class="card"><h3 data-i18n="gridProblems">Problems · triggers</h3><div id="alerts"></div></div>
   <div class="card"><h3 data-i18n="gridDisks">Disks</h3><table id="disk" class="data-like"></table></div>
   <div class="card"><h3 data-i18n="gridDiskIo">Disk I/O</h3><table id="diskio" class="data-like"></table></div>
-</div>
-<div class="grid">
-  <div class="card" style="grid-column:1/-1"><h3 data-i18n="gridTimeline">Timeline</h3><div id="timeline"></div></div>
 </div>
 <div class="grid">
   <div class="card"><h3 data-i18n="gridNet">Network interfaces</h3><table id="net" class="data-like"></table></div>
@@ -177,7 +175,7 @@ const WSM_UI_LANG='{{WSM_UI_LANG}}';
 document.documentElement.setAttribute('lang',WSM_UI_LANG);
 const L={
 ru:{
-hdrCrumb:'Мониторинг · Актуальные данные · Хост: local',btnQuickReport:'Сформировать отчет',reportTitle:'Краткий отчет по системе',reportGeneratedAt:'Сформирован',reportHealth:'Оценка здоровья',reportCritical:'Критические проблемы',reportWarnings:'Предупреждения',reportEvents:'Ошибки Windows (Error/Critical)',reportDetections:'Сигналы безопасности',reportHotPoints:'Ключевые риски',reportNoProblems:'Критичных проблем не обнаружено',kpiDelta5:'5м',kpiDelta15:'15м',kpiDeltaNA:'н/д',gridTimeline:'Таймлайн событий',playbookTitle:'Плейбук действий',playbookSteps:'Что делать',
+hdrCrumb:'Мониторинг · Актуальные данные · Хост: local',btnQuickReport:'Сформировать отчет',btnTimeline:'Таймлайн',timelineModalTitle:'События (таймлайн)',timelineKindAlert:'триггер',timelineKindEvent:'журнал',timelineKindSecurity:'детекция',reportTitle:'Краткий отчет по системе',reportGeneratedAt:'Сформирован',reportHealth:'Оценка здоровья',reportCritical:'Критические проблемы',reportWarnings:'Предупреждения',reportEvents:'Ошибки Windows (Error/Critical)',reportDetections:'Сигналы безопасности',reportHotPoints:'Ключевые риски',reportNoProblems:'Критичных проблем не обнаружено',kpiDelta5:'5м',kpiDelta15:'15м',kpiDeltaNA:'н/д',
 chartCpu:'Загрузка CPU %',chartMem:'Память %',chartLat:'Задержка диска (ср. мс)',chartNet:'Сеть MiB/s',chartHs:'Health score',chartTopCpu:'Процессы CPU (топ)',
 gridProblems:'Проблемы · триггеры',gridDisks:'Диски',gridDiskIo:'Диск I/O',gridNet:'Сетевые интерфейсы',gridSvc:'Службы',gridErr:'Недавние ошибки',
 gridMemDet:'Память — детали',gridSecDet:'Сигналы безопасности',gridPluginHealth:'Здоровье плагинов',thermalSectionTitle:'Температуры и датчики',gridSecEvents:'События безопасности',
@@ -203,7 +201,7 @@ verBannerFmt:'Версия агента ({0}) не совпадает с compani
 scoreCardTitle:'Оценка здоровья системы',healthCardHint:'Нажмите для подробного разбора',tempCardHint:'Полная таблица ниже. Нажмите для списка датчиков',chartMinLbl:'мин {0}',chartMaxLbl:'макс {0}'
 },
 en:{
-hdrCrumb:'Monitoring · Latest data · Host: local',btnQuickReport:'Build report',reportTitle:'System short report',reportGeneratedAt:'Generated',reportHealth:'Health score',reportCritical:'Critical issues',reportWarnings:'Warnings',reportEvents:'Windows errors (Error/Critical)',reportDetections:'Security detections',reportHotPoints:'Key risk points',reportNoProblems:'No critical problems detected',kpiDelta5:'5m',kpiDelta15:'15m',kpiDeltaNA:'n/a',gridTimeline:'Timeline',playbookTitle:'Response playbook',playbookSteps:'What to do',
+hdrCrumb:'Monitoring · Latest data · Host: local',btnQuickReport:'Build report',btnTimeline:'Timeline',timelineModalTitle:'Events (timeline)',timelineKindAlert:'trigger',timelineKindEvent:'log',timelineKindSecurity:'detection',reportTitle:'System short report',reportGeneratedAt:'Generated',reportHealth:'Health score',reportCritical:'Critical issues',reportWarnings:'Warnings',reportEvents:'Windows errors (Error/Critical)',reportDetections:'Security detections',reportHotPoints:'Key risk points',reportNoProblems:'No critical problems detected',kpiDelta5:'5m',kpiDelta15:'15m',kpiDeltaNA:'n/a',
 chartCpu:'CPU %',chartMem:'Memory %',chartLat:'Disk latency (avg ms)',chartNet:'Network MiB/s',chartHs:'Health score',chartTopCpu:'Top CPU processes',
 gridProblems:'Problems · triggers',gridDisks:'Disks',gridDiskIo:'Disk I/O',gridNet:'Network interfaces',gridSvc:'Services',gridErr:'Recent errors',
 gridMemDet:'Memory details',gridSecDet:'Security detections',gridPluginHealth:'Plugin health',thermalSectionTitle:'Temperatures & sensors',gridSecEvents:'Recent security events',
@@ -523,12 +521,10 @@ async function openAlertDetail(a){
   const body=document.getElementById('mBody');
   const title=document.getElementById('mTitle');
   title.textContent=(a.code||'')+' — '+(a.severity||'');
-  const pb=playbookForCode(a.code);
-  let pbHtml='<h3>'+esc(tr('playbookTitle'))+'</h3><ul style="margin:0 0 12px 18px;padding:0">'+pb.map(s=>'<li>'+esc(s)+'</li>').join('')+'</ul>';
   const ref=a.ref||{};
   if(ref.kind==='metric'&&lastMetrics){
     const m=lastMetrics;
-    body.innerHTML=pbHtml+'<p>'+esc(tr('alertMetricSnap'))+'</p><pre>'+esc(JSON.stringify({
+    body.innerHTML='<p>'+esc(tr('alertMetricSnap'))+'</p><pre>'+esc(JSON.stringify({
       cpu:m.cpuTotalPct,memoryUsed:m.memory?.usedPct,health:m.healthScore,queue:m.cpuQueueLength
     },null,2))+'</pre>';
     openModal(); return;
@@ -540,43 +536,20 @@ async function openAlertDetail(a){
       const r=await fetch('/api/v1/log-event?log='+encodeURIComponent(ref.log)+'&recordId='+encodeURIComponent(ref.recordId),{cache:'no-store'});
       if(!r.ok){ body.innerHTML='<p>'+esc(tr('alertLoadErr'))+'</p>'; return; }
       const j=await r.json();
-      body.innerHTML=pbHtml+'<pre>'+esc(j.message||'')+'</pre><p class="sub mono">'+esc(j.provider||'')+' | id '+(j.eventId??'')+'</p>';
+      body.innerHTML='<pre>'+esc(j.message||'')+'</pre><p class="sub mono">'+esc(j.provider||'')+' | id '+(j.eventId??'')+'</p>';
     }catch(e){ body.innerHTML='<p>'+esc(String(e))+'</p>'; }
     return;
   }
   if(ref.kind==='security'){
-    body.innerHTML=pbHtml+'<p>'+esc(tr('alertSigma'))+'</p><pre>'+esc(JSON.stringify(ref,null,2))+'</pre>';
+    body.innerHTML='<p>'+esc(tr('alertSigma'))+'</p><pre>'+esc(JSON.stringify(ref,null,2))+'</pre>';
     if(lastMetrics&&lastMetrics.detections){
       const hit=(lastMetrics.detections||[]).find(d=>d.ruleId===ref.ruleId&&d.eventTime===ref.eventTime);
       if(hit) body.innerHTML+='<h3>'+esc(tr('detectionHdr'))+'</h3><pre>'+esc(JSON.stringify(hit,null,2))+'</pre>';
     }
     openModal(); return;
   }
-  body.innerHTML=pbHtml+'<pre>'+esc(JSON.stringify(a,null,2))+'</pre>';
+  body.innerHTML='<pre>'+esc(JSON.stringify(a,null,2))+'</pre>';
   openModal();
-}
-
-function playbookForCode(code){
-  const c=String(code||'').toUpperCase();
-  switch(c){
-    case 'CPU': return ['Проверьте топ процессов по CPU и остановите аномальный процесс.','Если это штатная задача — увеличьте интервал опроса или лимитируйте задачу.','Проверьте очередь CPU и связанные ошибки диска/сети.'];
-    case 'QUEUE': return ['Проверьте длину очереди CPU и общее количество активных потоков.','Проверьте блокировки I/O: задержки диска и сетевые ошибки.','Перенесите тяжёлые задачи на непиковое время.'];
-    case 'RAM': return ['Проверьте топ процессов по памяти и утечки.','Проверьте commit charge и non-paged pool в разделе памяти.','Перезапустите проблемный сервис/процесс при стабильной утечке.'];
-    case 'COMMIT': return ['Проверьте процессы с высоким private bytes.','Убедитесь, что файл подкачки включён и имеет достаточный размер.','Снизьте одновременную нагрузку приложений.'];
-    case 'DISK': return ['Освободите место на томе и удалите временные файлы.','Перенесите логи/архивы на другой диск.','Настройте предупреждение до достижения критического уровня.'];
-    case 'DISK_HW': return ['Проверьте SMART/диагностику диска утилитой производителя.','Проверьте кабели, питание и контроллер диска.','Сделайте резервную копию данных и план замены диска.'];
-    case 'DISK_OP': return ['Проверьте operational status в OS и журнал System.','Проверьте состояние контроллера/драйвера хранилища.','Перезапустите устройство/хост в окно обслуживания.'];
-    case 'DISK_LAT': return ['Проверьте latency/queue и источник I/O нагрузки.','Проверьте фоновые задачи (backup/AV/indexing).','Проверьте состояние накопителя и контроллера.'];
-    case 'DISK_Q': return ['Проверьте burst-нагрузку на конкретный диск.','Снизьте параллелизм I/O задач.','Разнесите горячие данные на разные тома.'];
-    case 'DISK_TEMP': return ['Проверьте температуру накопителя и вентиляцию корпуса.','Проверьте запылённость и airflow.','Снизьте длительную I/O нагрузку до нормализации.'];
-    case 'SMART': return ['Проверьте износ и SMART-атрибуты диска.','Сделайте резервную копию критичных данных.','Запланируйте замену накопителя.'];
-    case 'NET_ERR': return ['Проверьте интерфейс и счётчики ошибок на адаптере.','Проверьте кабель/порт свитча/драйвер NIC.','Зафиксируйте скорость/duplex при нестабильной автосогласовании.'];
-    case 'SVC': return ['Проверьте почему служба не в Running.','Откройте журнал событий Service Control Manager.','Запустите службу и проверьте зависимости.'];
-    case 'TEMP': return ['Проверьте охлаждение CPU/GPU и обороты вентиляторов.','Проверьте термопрофиль BIOS/UEFI.','Снизьте нагрузку до стабилизации температуры.'];
-    case 'EVT': return ['Откройте детали события и проверьте источник ошибки.','Сопоставьте время события с нагрузкой/деплоем.','Устраните первопричину и проверьте повторяемость.'];
-    case 'SEC': return ['Откройте детекцию Sigma и проверьте процесс/команду.','Проверьте легитимность активности и пользователя.','При подозрении — изолируйте хост и соберите артефакты.'];
-    default: return ['Проверьте связанный раздел метрик на дашборде.','Сопоставьте событие с журналом Windows по времени.','Примените корректирующие действия и наблюдайте тренд.'];
-  }
 }
 
 function buildQuickReport(){
@@ -652,13 +625,18 @@ function buildTimeline(d){
   return out.slice(0,40);
 }
 
-function renderTimeline(d){
+function timelineKindLabel(kind){
+  const k=String(kind||'');
+  if(k==='alert')return tr('timelineKindAlert');
+  if(k==='event')return tr('timelineKindEvent');
+  if(k==='security')return tr('timelineKindSecurity');
+  return k;
+}
+
+function timelineHtml(d){
   const rows=buildTimeline(d);
-  const host=document.getElementById('timeline');
-  if(!host) return;
   if(!rows.length){
-    host.innerHTML='<div class="sub" style="padding:8px;color:var(--muted)">'+esc(tr('noProblems'))+'</div>';
-    return;
+    return '<div class="sub" style="padding:8px;color:var(--muted)">'+esc(tr('noProblems'))+'</div>';
   }
   const groups={};
   rows.forEach(r=>{
@@ -667,10 +645,17 @@ function renderTimeline(d){
     groups[key].push(r);
   });
   const keys=Object.keys(groups).sort((a,b)=>b.localeCompare(a));
-  host.innerHTML=keys.map(k=>{
-    const items=groups[k].map(r=>`<div class="alert ${r.sev==='critical'?'critical':'warning'}"><span class="mono">${esc(String(r.t||'').slice(11,19))}</span> · <span class="mono">${esc(r.kind)}</span> · ${esc(r.title)}</div>`).join('');
+  return keys.map(k=>{
+    const items=groups[k].map(r=>`<div class="alert ${r.sev==='critical'?'critical':'warning'}"><span class="mono">${esc(String(r.t||'').slice(11,19))}</span> · <span class="mono">${esc(timelineKindLabel(r.kind))}</span> · ${esc(r.title)}</div>`).join('');
     return `<div class="sub mono" style="margin:8px 0 6px">${esc(k)}</div>${items}`;
   }).join('');
+}
+
+function openTimelineModal(){
+  if(!lastMetrics) return;
+  document.getElementById('mTitle').textContent=tr('timelineModalTitle');
+  document.getElementById('mBody').innerHTML=timelineHtml(lastMetrics);
+  openModal();
 }
 
 async function load(){
@@ -741,8 +726,6 @@ async function load(){
         openAlertDetail(al[i]);
       });
     });
-    renderTimeline(d);
-
     const disk=d.disks||[];
     document.getElementById('disk').innerHTML='<tr><th>'+esc(tr('diskThVol'))+'</th><th>'+esc(tr('diskThFreeGb'))+'</th><th>'+esc(tr('diskThFreePct'))+'</th></tr>'+disk.map(x=>`<tr><td>${esc(x.deviceId)} ${esc(x.label||'')}</td><td>${x.freeGB}</td><td>${x.freePct}</td></tr>`).join('');
     const dio=d.diskPerf||[];
@@ -789,6 +772,7 @@ async function load(){
 }
 
 document.getElementById('btnReport')?.addEventListener('click',()=>buildQuickReport());
+document.getElementById('btnTimeline')?.addEventListener('click',()=>openTimelineModal());
 wireChartHover();
 let _chartResizeTimer;
 window.addEventListener('resize',()=>{

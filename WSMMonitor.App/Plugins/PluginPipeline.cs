@@ -5,15 +5,18 @@ public sealed class PluginPipeline
     private readonly IReadOnlyList<IEventSourcePlugin> _plugins;
     private readonly SigmaMvpEngine _sigma;
     private readonly SigmaSuppressionStore _suppressions;
+    private readonly bool _sigmaEnabled;
 
     public PluginPipeline(
         IEnumerable<IEventSourcePlugin>? plugins = null,
         SigmaMvpEngine? sigma = null,
-        SigmaSuppressionStore? suppressions = null)
+        SigmaSuppressionStore? suppressions = null,
+        bool sigmaEnabled = true)
     {
         _plugins = (plugins ?? [new SysmonSourcePlugin()]).ToList();
         _sigma = sigma ?? new SigmaMvpEngine();
         _suppressions = suppressions ?? new SigmaSuppressionStore(null);
+        _sigmaEnabled = sigmaEnabled;
     }
 
     public (IReadOnlyList<SecurityEventRow> events, IReadOnlyList<DetectionRow> detections, IReadOnlyList<PluginHealthRow> health) Collect()
@@ -33,6 +36,9 @@ public sealed class PluginPipeline
                 health.Add(new PluginHealthRow(p.Name, false, ex.Message, DateTimeOffset.Now.ToString("o")));
             }
         }
+
+        if (!_sigmaEnabled)
+            return (allEvents.OrderByDescending(e => e.Time).Take(120).ToList(), [], health);
 
         _suppressions.ReloadIfStale(TimeSpan.FromSeconds(20));
         var orderedEvents = allEvents.OrderByDescending(e => e.Time).Take(120).ToList();

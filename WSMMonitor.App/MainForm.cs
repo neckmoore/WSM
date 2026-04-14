@@ -480,6 +480,8 @@ public sealed class MainForm : Form
     private static bool NeedEmbeddedAgentReapply(WsmAppOptions before, WsmAppOptions after)
     {
         var portChanged = before.Agent.Port != after.Agent.Port;
+        var sigmaChanged = before.Sigma.Enabled != after.Sigma.Enabled
+            || !string.Equals((before.Sigma.SuppressionsPath ?? "").Trim(), (after.Sigma.SuppressionsPath ?? "").Trim(), StringComparison.OrdinalIgnoreCase);
         var beforeMode = string.Equals(before.Ui.WorkMode, "service", StringComparison.OrdinalIgnoreCase)
             ? "service"
             : "companion";
@@ -487,7 +489,7 @@ public sealed class MainForm : Form
             ? "service"
             : "companion";
         var modeChanged = !string.Equals(beforeMode, afterMode, StringComparison.Ordinal);
-        return portChanged || modeChanged;
+        return portChanged || modeChanged || sigmaChanged;
     }
 
     private static bool NeedLoggingReinitialize(WsmAppOptions before, WsmAppOptions after)
