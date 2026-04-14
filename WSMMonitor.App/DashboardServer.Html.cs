@@ -115,30 +115,10 @@ table.data-like tbody tr:nth-child(even){background:rgba(255,255,255,.02)}
   </div>
 </div>
 <div class="zb-toolbar">
-  <span class="sub" style="margin:0;color:var(--muted);font-weight:650" data-i18n="tbRange">Time range</span>
-  <button type="button" class="tmb on" data-m="now" data-i18n="tmbNow">Now</button>
-  <button type="button" class="tmb" data-m="15m" data-i18n="tmb15m">15m</button>
-  <button type="button" class="tmb" data-m="1h" data-i18n="tmb1h">1h</button>
-  <button type="button" class="tmb" data-m="24h" data-i18n="tmb24h">24h</button>
-  <button type="button" class="tmb" data-m="7d" data-i18n="tmb7d">7d</button>
+  <button type="button" class="tmb on" id="btnReport" data-i18n="btnQuickReport">Сформировать отчет</button>
   <span class="badge mono" id="ts">-</span>
-  <span class="badge mono" id="rangeLbl"></span>
 </div>
 <div class="zb-page" id="zbPage">
-<div class="filters">
-  <span class="ftitle" data-i18n="fltTitle">Filter</span>
-  <span class="sub" style="margin:0;color:var(--muted)" data-i18n="fltSev">Severity:</span>
-  <label><input type="checkbox" id="fSevCrit" checked/> <span data-i18n="fltSevCrit">Disaster / High</span></label>
-  <label><input type="checkbox" id="fSevWarn" checked/> <span data-i18n="fltSevWarn">Average / Warning</span></label>
-  <label><input type="checkbox" id="fSevInfo" checked/> <span data-i18n="fltSevInfo">Information</span></label>
-  <span class="sub" style="margin:0 0 0 8px;color:var(--muted)" data-i18n="fltCodeLbl">Trigger / code:</span>
-  <select id="fCode">
-    <option value="" data-i18n="fltAll">All</option>
-  </select>
-  <button type="button" class="fbtn on" id="applyF" data-i18n="fltApply">Apply</button>
-  <span class="sub" style="margin:0;color:var(--muted)" data-i18n="fltAuto">Auto on change</span>
-</div>
-
 <div class="kpi" id="kpi"></div>
 
 <div class="grid" id="healthBreak"></div>
@@ -157,6 +137,9 @@ table.data-like tbody tr:nth-child(even){background:rgba(255,255,255,.02)}
   <div class="card"><h3 data-i18n="gridProblems">Problems · triggers</h3><div id="alerts"></div></div>
   <div class="card"><h3 data-i18n="gridDisks">Disks</h3><table id="disk" class="data-like"></table></div>
   <div class="card"><h3 data-i18n="gridDiskIo">Disk I/O</h3><table id="diskio" class="data-like"></table></div>
+</div>
+<div class="grid">
+  <div class="card" style="grid-column:1/-1"><h3 data-i18n="gridTimeline">Timeline</h3><div id="timeline"></div></div>
 </div>
 <div class="grid">
   <div class="card"><h3 data-i18n="gridNet">Network interfaces</h3><table id="net" class="data-like"></table></div>
@@ -194,9 +177,7 @@ const WSM_UI_LANG='{{WSM_UI_LANG}}';
 document.documentElement.setAttribute('lang',WSM_UI_LANG);
 const L={
 ru:{
-hdrCrumb:'Мониторинг · Актуальные данные · Хост: local',tbRange:'Диапазон времени',
-tmbNow:'Сейчас',tmb15m:'15 мин',tmb1h:'1 ч',tmb24h:'24 ч',tmb7d:'7 дн',rangeLive:'Живой буфер',
-fltTitle:'Фильтр',fltSev:'Важность:',fltSevCrit:'Катастрофа / Высокая',fltSevWarn:'Средняя / Предупреждение',fltSevInfo:'Информация',fltCodeLbl:'Триггер / код:',fltAll:'Все',fltApply:'Применить',fltAuto:'Авто при изменении',
+hdrCrumb:'Мониторинг · Актуальные данные · Хост: local',btnQuickReport:'Сформировать отчет',reportTitle:'Краткий отчет по системе',reportGeneratedAt:'Сформирован',reportHealth:'Оценка здоровья',reportCritical:'Критические проблемы',reportWarnings:'Предупреждения',reportEvents:'Ошибки Windows (Error/Critical)',reportDetections:'Сигналы безопасности',reportHotPoints:'Ключевые риски',reportNoProblems:'Критичных проблем не обнаружено',kpiDelta5:'5м',kpiDelta15:'15м',kpiDeltaNA:'н/д',gridTimeline:'Таймлайн событий',playbookTitle:'Плейбук действий',playbookSteps:'Что делать',
 chartCpu:'Загрузка CPU %',chartMem:'Память %',chartLat:'Задержка диска (ср. мс)',chartNet:'Сеть MiB/s',chartHs:'Health score',chartTopCpu:'Процессы CPU (топ)',
 gridProblems:'Проблемы · триггеры',gridDisks:'Диски',gridDiskIo:'Диск I/O',gridNet:'Сетевые интерфейсы',gridSvc:'Службы',gridErr:'Недавние ошибки',
 gridMemDet:'Память — детали',gridSecDet:'Сигналы безопасности',gridPluginHealth:'Здоровье плагинов',thermalSectionTitle:'Температуры и датчики',gridSecEvents:'События безопасности',
@@ -222,9 +203,7 @@ verBannerFmt:'Версия агента ({0}) не совпадает с compani
 scoreCardTitle:'Оценка здоровья системы',healthCardHint:'Нажмите для подробного разбора',tempCardHint:'Полная таблица ниже. Нажмите для списка датчиков',chartMinLbl:'мин {0}',chartMaxLbl:'макс {0}'
 },
 en:{
-hdrCrumb:'Monitoring · Latest data · Host: local',tbRange:'Time range',
-tmbNow:'Now',tmb15m:'15m',tmb1h:'1h',tmb24h:'24h',tmb7d:'7d',rangeLive:'Live buffer',
-fltTitle:'Filter',fltSev:'Severity:',fltSevCrit:'Disaster / High',fltSevWarn:'Average / Warning',fltSevInfo:'Information',fltCodeLbl:'Trigger / code:',fltAll:'All',fltApply:'Apply',fltAuto:'Auto on change',
+hdrCrumb:'Monitoring · Latest data · Host: local',btnQuickReport:'Build report',reportTitle:'System short report',reportGeneratedAt:'Generated',reportHealth:'Health score',reportCritical:'Critical issues',reportWarnings:'Warnings',reportEvents:'Windows errors (Error/Critical)',reportDetections:'Security detections',reportHotPoints:'Key risk points',reportNoProblems:'No critical problems detected',kpiDelta5:'5m',kpiDelta15:'15m',kpiDeltaNA:'n/a',gridTimeline:'Timeline',playbookTitle:'Response playbook',playbookSteps:'What to do',
 chartCpu:'CPU %',chartMem:'Memory %',chartLat:'Disk latency (avg ms)',chartNet:'Network MiB/s',chartHs:'Health score',chartTopCpu:'Top CPU processes',
 gridProblems:'Problems · triggers',gridDisks:'Disks',gridDiskIo:'Disk I/O',gridNet:'Network interfaces',gridSvc:'Services',gridErr:'Recent errors',
 gridMemDet:'Memory details',gridSecDet:'Security detections',gridPluginHealth:'Plugin health',thermalSectionTitle:'Temperatures & sensors',gridSecEvents:'Recent security events',
@@ -300,30 +279,29 @@ function openModal(){
   });
 })();
 
-let timeMode='now';
 const live={cpu:[],mem:[],lat:[],net:[],score:[]};
-const maxPts=120;
+const maxPts=360;
 let lastMetrics=null;
-let histPoints=[];
-let histMeta={from:'',to:''};
-let histTimeLabels=[];
+const sampleSeconds=2.5;
 
 function pushLive(name,val){
   live[name].push(val);
   if(live[name].length>maxPts)live[name].shift();
 }
 
-document.querySelectorAll('.tmb[data-m]').forEach(b=>{
-  b.addEventListener('click',()=>{
-    timeMode=b.dataset.m;
-    document.querySelectorAll('.tmb[data-m]').forEach(x=>x.classList.toggle('on',x.dataset.m===timeMode));
-    if(timeMode==='now'){
-      live.cpu=[];live.mem=[];live.lat=[];live.net=[];live.score=[];
-      document.getElementById('rangeLbl').textContent=tr('rangeLive');
-    }
-    refreshHistory();
-  });
-});
+function deltaFrom(series, current, secondsBack){
+  const pts=Math.max(1,Math.round(secondsBack/sampleSeconds));
+  if(series.length<=pts) return null;
+  const prev=Number(series[series.length-1-pts]);
+  if(!Number.isFinite(prev)) return null;
+  return current-prev;
+}
+
+function fmtDelta(v, unit){
+  if(v==null || !Number.isFinite(v)) return tr('kpiDeltaNA');
+  const sign=v>0?'+':'';
+  return sign+v.toFixed(1)+(unit||'');
+}
 
 function openHealthScoreModal(){
   if(!lastMetrics)return;
@@ -525,68 +503,9 @@ function redrawChartsFromLive(){
   drawZoneChart('chScore',live.score,{maxY:100,minY:0,zones:scoreZones(),lineColor:'#94a3b8',ylabel:tr('ylabelScore')});
 }
 
-function redrawChartsFromHistory(){
-  const cpu=histPoints.map(p=>p.cpu??0);
-  const mem=histPoints.map(p=>p.mem??0);
-  const lat=histPoints.map(p=>p.lat??0);
-  const net=histPoints.map(p=>p.net??0);
-  const sc=histPoints.map(p=>p.score??0);
-  const tl=histTimeLabels;
-  drawZoneChart('chCpu',cpu,{maxY:100,zones:cpuZones(),lineColor:'#38bdf8',timeLabels:tl,ylabel:tr('ylabelCpu')});
-  drawZoneChart('chMem',mem,{maxY:100,zones:memZones(),lineColor:'#a78bfa',timeLabels:tl,ylabel:tr('ylabelMem')});
-  drawZoneChart('chLat',lat,{maxY:Math.max(50,...lat,1),minY:0,zones:latZones(),lineColor:'#fbbf24',decimals:2,timeLabels:tl,ylabel:tr('ylabelLat')});
-  drawZoneChart('chNet',net,{maxY:Math.max(10,...net,1),minY:0,zones:[],lineColor:'#34d399',timeLabels:tl,ylabel:tr('ylabelNet')});
-  drawZoneChart('chScore',sc,{maxY:100,minY:0,zones:scoreZones(),lineColor:'#94a3b8',timeLabels:tl,ylabel:tr('ylabelScore')});
-  document.getElementById('lblCpu').textContent=histMeta.from.slice(0,16)+' → '+histMeta.to.slice(0,16);
-  document.getElementById('lblMem').textContent=document.getElementById('lblCpu').textContent;
-  document.getElementById('lblLat').textContent=document.getElementById('lblCpu').textContent;
-  document.getElementById('lblNet').textContent=document.getElementById('lblCpu').textContent;
-  document.getElementById('lblScore').textContent=document.getElementById('lblCpu').textContent;
-}
-
-async function refreshHistory(){
-  if(timeMode==='now'){ redrawChartsFromLive(); return; }
-  try{
-    const r=await fetch('/api/v1/metrics/history?preset='+encodeURIComponent(timeMode),{cache:'no-store'});
-    const h=await r.json();
-    histPoints=h.points||[];
-    histMeta={from:h.fromUtc||'',to:h.toUtc||''};
-    histTimeLabels=(histPoints||[]).map(p=>{
-      const t=String(p.t||'');
-      if(t.length>=19)return t.slice(11,19);
-      return t.slice(0,8);
-    });
-    document.getElementById('rangeLbl').textContent=(histMeta.from||'').slice(5,16)+' — '+(histMeta.to||'').slice(5,16);
-    redrawChartsFromHistory();
-  }catch(e){console.error(e)}
-}
-
-function sevMatch(sev){
-  const s=(sev||'').toLowerCase();
-  const c=document.getElementById('fSevCrit').checked;
-  const w=document.getElementById('fSevWarn').checked;
-  const i=document.getElementById('fSevInfo').checked;
-  if(s.includes('critical')||s==='critical')return c;
-  if(s.includes('high'))return c;
-  if(s.includes('error'))return w;
-  if(s.includes('warn')||s==='warning')return w;
-  return i;
-}
-
-function codeMatch(code){
-  const sel=document.getElementById('fCode');
-  const v=sel.value;
-  if(!v)return true;
-  return (code||'')===v;
-}
-
-function fillCodeFilter(alerts){
-  const sel=document.getElementById('fCode');
-  const cur=sel.value;
-  const codes=[...new Set((alerts||[]).map(a=>a.code).filter(Boolean))].sort();
-  sel.innerHTML='<option value="">'+esc(tr('fltAll'))+'</option>'+codes.map(c=>'<option value="'+esc(c)+'">'+esc(c)+'</option>').join('');
-  if(codes.includes(cur))sel.value=cur;
-}
+function sevMatch(_sev){ return true; }
+function codeMatch(_code){ return true; }
+function fillCodeFilter(_alerts){}
 
 function drawScoreRing(score){
   const id='scoreRing'; const cv=document.getElementById(id); if(!cv)return;
@@ -604,10 +523,12 @@ async function openAlertDetail(a){
   const body=document.getElementById('mBody');
   const title=document.getElementById('mTitle');
   title.textContent=(a.code||'')+' — '+(a.severity||'');
+  const pb=playbookForCode(a.code);
+  let pbHtml='<h3>'+esc(tr('playbookTitle'))+'</h3><ul style="margin:0 0 12px 18px;padding:0">'+pb.map(s=>'<li>'+esc(s)+'</li>').join('')+'</ul>';
   const ref=a.ref||{};
   if(ref.kind==='metric'&&lastMetrics){
     const m=lastMetrics;
-    body.innerHTML='<p>'+esc(tr('alertMetricSnap'))+'</p><pre>'+esc(JSON.stringify({
+    body.innerHTML=pbHtml+'<p>'+esc(tr('alertMetricSnap'))+'</p><pre>'+esc(JSON.stringify({
       cpu:m.cpuTotalPct,memoryUsed:m.memory?.usedPct,health:m.healthScore,queue:m.cpuQueueLength
     },null,2))+'</pre>';
     openModal(); return;
@@ -619,19 +540,82 @@ async function openAlertDetail(a){
       const r=await fetch('/api/v1/log-event?log='+encodeURIComponent(ref.log)+'&recordId='+encodeURIComponent(ref.recordId),{cache:'no-store'});
       if(!r.ok){ body.innerHTML='<p>'+esc(tr('alertLoadErr'))+'</p>'; return; }
       const j=await r.json();
-      body.innerHTML='<pre>'+esc(j.message||'')+'</pre><p class="sub mono">'+esc(j.provider||'')+' | id '+(j.eventId??'')+'</p>';
+      body.innerHTML=pbHtml+'<pre>'+esc(j.message||'')+'</pre><p class="sub mono">'+esc(j.provider||'')+' | id '+(j.eventId??'')+'</p>';
     }catch(e){ body.innerHTML='<p>'+esc(String(e))+'</p>'; }
     return;
   }
   if(ref.kind==='security'){
-    body.innerHTML='<p>'+esc(tr('alertSigma'))+'</p><pre>'+esc(JSON.stringify(ref,null,2))+'</pre>';
+    body.innerHTML=pbHtml+'<p>'+esc(tr('alertSigma'))+'</p><pre>'+esc(JSON.stringify(ref,null,2))+'</pre>';
     if(lastMetrics&&lastMetrics.detections){
       const hit=(lastMetrics.detections||[]).find(d=>d.ruleId===ref.ruleId&&d.eventTime===ref.eventTime);
       if(hit) body.innerHTML+='<h3>'+esc(tr('detectionHdr'))+'</h3><pre>'+esc(JSON.stringify(hit,null,2))+'</pre>';
     }
     openModal(); return;
   }
-  body.innerHTML='<pre>'+esc(JSON.stringify(a,null,2))+'</pre>';
+  body.innerHTML=pbHtml+'<pre>'+esc(JSON.stringify(a,null,2))+'</pre>';
+  openModal();
+}
+
+function playbookForCode(code){
+  const c=String(code||'').toUpperCase();
+  switch(c){
+    case 'CPU': return ['Проверьте топ процессов по CPU и остановите аномальный процесс.','Если это штатная задача — увеличьте интервал опроса или лимитируйте задачу.','Проверьте очередь CPU и связанные ошибки диска/сети.'];
+    case 'QUEUE': return ['Проверьте длину очереди CPU и общее количество активных потоков.','Проверьте блокировки I/O: задержки диска и сетевые ошибки.','Перенесите тяжёлые задачи на непиковое время.'];
+    case 'RAM': return ['Проверьте топ процессов по памяти и утечки.','Проверьте commit charge и non-paged pool в разделе памяти.','Перезапустите проблемный сервис/процесс при стабильной утечке.'];
+    case 'COMMIT': return ['Проверьте процессы с высоким private bytes.','Убедитесь, что файл подкачки включён и имеет достаточный размер.','Снизьте одновременную нагрузку приложений.'];
+    case 'DISK': return ['Освободите место на томе и удалите временные файлы.','Перенесите логи/архивы на другой диск.','Настройте предупреждение до достижения критического уровня.'];
+    case 'DISK_HW': return ['Проверьте SMART/диагностику диска утилитой производителя.','Проверьте кабели, питание и контроллер диска.','Сделайте резервную копию данных и план замены диска.'];
+    case 'DISK_OP': return ['Проверьте operational status в OS и журнал System.','Проверьте состояние контроллера/драйвера хранилища.','Перезапустите устройство/хост в окно обслуживания.'];
+    case 'DISK_LAT': return ['Проверьте latency/queue и источник I/O нагрузки.','Проверьте фоновые задачи (backup/AV/indexing).','Проверьте состояние накопителя и контроллера.'];
+    case 'DISK_Q': return ['Проверьте burst-нагрузку на конкретный диск.','Снизьте параллелизм I/O задач.','Разнесите горячие данные на разные тома.'];
+    case 'DISK_TEMP': return ['Проверьте температуру накопителя и вентиляцию корпуса.','Проверьте запылённость и airflow.','Снизьте длительную I/O нагрузку до нормализации.'];
+    case 'SMART': return ['Проверьте износ и SMART-атрибуты диска.','Сделайте резервную копию критичных данных.','Запланируйте замену накопителя.'];
+    case 'NET_ERR': return ['Проверьте интерфейс и счётчики ошибок на адаптере.','Проверьте кабель/порт свитча/драйвер NIC.','Зафиксируйте скорость/duplex при нестабильной автосогласовании.'];
+    case 'SVC': return ['Проверьте почему служба не в Running.','Откройте журнал событий Service Control Manager.','Запустите службу и проверьте зависимости.'];
+    case 'TEMP': return ['Проверьте охлаждение CPU/GPU и обороты вентиляторов.','Проверьте термопрофиль BIOS/UEFI.','Снизьте нагрузку до стабилизации температуры.'];
+    case 'EVT': return ['Откройте детали события и проверьте источник ошибки.','Сопоставьте время события с нагрузкой/деплоем.','Устраните первопричину и проверьте повторяемость.'];
+    case 'SEC': return ['Откройте детекцию Sigma и проверьте процесс/команду.','Проверьте легитимность активности и пользователя.','При подозрении — изолируйте хост и соберите артефакты.'];
+    default: return ['Проверьте связанный раздел метрик на дашборде.','Сопоставьте событие с журналом Windows по времени.','Примените корректирующие действия и наблюдайте тренд.'];
+  }
+}
+
+function buildQuickReport(){
+  if(!lastMetrics) return;
+  const d=lastMetrics;
+  const alerts=Array.isArray(d.alerts)?d.alerts:[];
+  const critical=alerts.filter(a=>String(a.severity||'').toLowerCase()==='critical');
+  const warnings=alerts.filter(a=>String(a.severity||'').toLowerCase()==='warning');
+  const winErr=(Array.isArray(d.events)?d.events:[])
+    .filter(e=>{
+      const lvl=String(e.level||'').toLowerCase();
+      return lvl.includes('critical')||lvl.includes('error')||lvl.includes('ошибка');
+    })
+    .slice(0,8);
+  const det=Array.isArray(d.detections)?d.detections:[];
+  const score=Number(d.healthScore??0);
+  const risks=[];
+  if(score<60) risks.push('Health score below 60');
+  if(critical.length>0) risks.push('Critical alerts present');
+  if(winErr.length>0) risks.push('Recent Windows error/critical events');
+  if(det.length>0) risks.push('Security detections in latest scrape');
+  if(risks.length===0) risks.push(tr('reportNoProblems'));
+
+  document.getElementById('mTitle').textContent=tr('reportTitle');
+  let html='';
+  html+='<p class="sub">'+esc(tr('reportGeneratedAt'))+': <span class="mono">'+esc(d.timestamp||new Date().toISOString())+'</span></p>';
+  html+='<table class="data-like"><tr><th>'+esc(tr('reportHealth'))+'</th><th>'+esc(tr('reportCritical'))+'</th><th>'+esc(tr('reportWarnings'))+'</th><th>'+esc(tr('reportEvents'))+'</th><th>'+esc(tr('reportDetections'))+'</th></tr>';
+  html+='<tr><td class="mono">'+score+'</td><td class="mono">'+critical.length+'</td><td class="mono">'+warnings.length+'</td><td class="mono">'+winErr.length+'</td><td class="mono">'+det.length+'</td></tr></table>';
+  html+='<h3 style="margin:14px 0 8px">'+esc(tr('reportHotPoints'))+'</h3>';
+  html+='<ul style="margin:0 0 10px 18px;padding:0">'+risks.map(r=>'<li>'+esc(r)+'</li>').join('')+'</ul>';
+  if(critical.length){
+    html+='<h3 style="margin:14px 0 8px">'+esc(tr('reportCritical'))+'</h3>';
+    html+='<pre>'+esc(critical.slice(0,8).map(a=>`[${a.code}] ${a.text}`).join('\n'))+'</pre>';
+  }
+  if(winErr.length){
+    html+='<h3 style="margin:14px 0 8px">'+esc(tr('reportEvents'))+'</h3>';
+    html+='<pre>'+esc(winErr.map(e=>`${e.time||''} | ${e.log||''} | ${String(e.message||'').slice(0,160)}`).join('\n'))+'</pre>';
+  }
+  document.getElementById('mBody').innerHTML=html;
   openModal();
 }
 
@@ -651,6 +635,44 @@ function showVersionMismatchIfNeeded(resp){
   }catch(e){console.error(e)}
 }
 
+function buildTimeline(d){
+  const out=[];
+  const nowTs=String(d.timestamp||'');
+  (d.alerts||[]).forEach(a=>{
+    out.push({ t: nowTs, sev: a.severity||'warning', kind:'alert', title:`[${a.code}] ${a.text}` });
+  });
+  (d.events||[]).forEach(e=>{
+    out.push({ t: e.time||'', sev: (String(e.level||'').toLowerCase().includes('critical')?'critical':'warning'), kind:'event', title:`${e.log}: ${String(e.message||'').slice(0,140)}` });
+  });
+  (d.detections||[]).forEach(x=>{
+    const s=String(x.severity||'').toLowerCase();
+    out.push({ t: x.eventTime||'', sev: (s.includes('high')||s.includes('critical'))?'critical':'warning', kind:'security', title:`${x.title} (${x.ruleId})` });
+  });
+  out.sort((a,b)=> String(b.t).localeCompare(String(a.t)));
+  return out.slice(0,40);
+}
+
+function renderTimeline(d){
+  const rows=buildTimeline(d);
+  const host=document.getElementById('timeline');
+  if(!host) return;
+  if(!rows.length){
+    host.innerHTML='<div class="sub" style="padding:8px;color:var(--muted)">'+esc(tr('noProblems'))+'</div>';
+    return;
+  }
+  const groups={};
+  rows.forEach(r=>{
+    const key=String(r.t||'').slice(0,16);
+    if(!groups[key]) groups[key]=[];
+    groups[key].push(r);
+  });
+  const keys=Object.keys(groups).sort((a,b)=>b.localeCompare(a));
+  host.innerHTML=keys.map(k=>{
+    const items=groups[k].map(r=>`<div class="alert ${r.sev==='critical'?'critical':'warning'}"><span class="mono">${esc(String(r.t||'').slice(11,19))}</span> · <span class="mono">${esc(r.kind)}</span> · ${esc(r.title)}</div>`).join('');
+    return `<div class="sub mono" style="margin:8px 0 6px">${esc(k)}</div>${items}`;
+  }).join('');
+}
+
 async function load(){
   try{
     applyStaticI18n();
@@ -668,27 +690,34 @@ async function load(){
     const lat=avgLatency(d);
     const rx=(d.network||[]).reduce((a,n)=>a+rateToMiB(n.rxPerSec),0);
     const tx=(d.network||[]).reduce((a,n)=>a+rateToMiB(n.txPerSec),0);
-    if(timeMode==='now'){
-      pushLive('cpu',cpu); pushLive('mem',mem); pushLive('lat',lat); pushLive('net',rx+tx); pushLive('score',score);
-      redrawChartsFromLive();
-      const ll=tr('liveLbl');
-      document.getElementById('lblCpu').textContent=ll;
-      document.getElementById('lblMem').textContent=ll;
-      document.getElementById('lblLat').textContent=ll;
-      document.getElementById('lblNet').textContent=ll;
-      document.getElementById('lblScore').textContent=ll;
-    }
+    pushLive('cpu',cpu); pushLive('mem',mem); pushLive('lat',lat); pushLive('net',rx+tx); pushLive('score',score);
+    redrawChartsFromLive();
+    const ll=tr('liveLbl');
+    document.getElementById('lblCpu').textContent=ll;
+    document.getElementById('lblMem').textContent=ll;
+    document.getElementById('lblLat').textContent=ll;
+    document.getElementById('lblNet').textContent=ll;
+    document.getElementById('lblScore').textContent=ll;
 
     const kpi=document.getElementById('kpi');
     const tempMetric=maxTemp!=null?`${maxTemp.toFixed(1)} °C`:'—';
     const tempLhm=lhmCount?trf('kpiTempLhmFmt',lhmCount):'';
     const tempSub=th.length?trf('kpiTempSensorsFmt',th.length,tempLhm):tr('kpiTempNoRows');
     const tempCls=maxTemp!=null?toClass(maxTemp,80,90):'';
+    const cpu5=fmtDelta(deltaFrom(live.cpu,cpu,300),'%');
+    const cpu15=fmtDelta(deltaFrom(live.cpu,cpu,900),'%');
+    const mem5=fmtDelta(deltaFrom(live.mem,mem,300),'%');
+    const mem15=fmtDelta(deltaFrom(live.mem,mem,900),'%');
+    const lat5=fmtDelta(deltaFrom(live.lat,lat,300),' ms');
+    const lat15=fmtDelta(deltaFrom(live.lat,lat,900),' ms');
+    const netNow=rx+tx;
+    const net5=fmtDelta(deltaFrom(live.net,netNow,300),' MiB/s');
+    const net15=fmtDelta(deltaFrom(live.net,netNow,900),' MiB/s');
     kpi.innerHTML=
-      '<div class="card"><h3>'+esc(tr('kpiCpuTitle'))+'</h3><div class="metric '+toClass(cpu,85,95)+'">'+cpu.toFixed(1)+'%</div><div class="sub mono">'+esc(trf('kpiCoresFmt',d.cpuLogicalCores??d.CpuLogicalCores,d.cpuQueueLength??d.CpuQueueLength??'-'))+'</div></div>'+
-      '<div class="card"><h3>'+esc(tr('kpiMemTitle'))+'</h3><div class="metric '+toClass(mem,85,92)+'">'+mem.toFixed(1)+'%</div><div class="sub mono">'+esc(trf('kpiMemFmt',m.usedMiB??m.UsedMiB??'-',m.totalMiB??m.TotalMiB??'-',m.commitPct??m.CommitPct??'-'))+'</div></div>'+
+      '<div class="card"><h3>'+esc(tr('kpiCpuTitle'))+'</h3><div class="metric '+toClass(cpu,85,95)+'">'+cpu.toFixed(1)+'%</div><div class="sub mono">'+esc(trf('kpiCoresFmt',d.cpuLogicalCores??d.CpuLogicalCores,d.cpuQueueLength??d.CpuQueueLength??'-'))+'</div><div class="sub mono">'+esc(tr('kpiDelta5'))+': '+esc(cpu5)+' · '+esc(tr('kpiDelta15'))+': '+esc(cpu15)+'</div></div>'+
+      '<div class="card"><h3>'+esc(tr('kpiMemTitle'))+'</h3><div class="metric '+toClass(mem,85,92)+'">'+mem.toFixed(1)+'%</div><div class="sub mono">'+esc(trf('kpiMemFmt',m.usedMiB??m.UsedMiB??'-',m.totalMiB??m.TotalMiB??'-',m.commitPct??m.CommitPct??'-'))+'</div><div class="sub mono">'+esc(tr('kpiDelta5'))+': '+esc(mem5)+' · '+esc(tr('kpiDelta15'))+': '+esc(mem15)+'</div></div>'+
       '<div class="card card--interactive" id="healthScoreCard" title="'+esc(tr('healthCardHint'))+'"><h3>'+esc(tr('kpiHealthTitle'))+'</h3><div style="display:flex;gap:10px;align-items:center"><canvas id="scoreRing" style="width:96px;height:96px"></canvas><div><div class="metric '+toClass(100-score,20,40)+'">'+score+'</div><div class="sub">'+esc(tr('kpiHealthSub'))+'</div></div></div></div>'+
-      '<div class="card"><h3>'+esc(tr('kpiThroughputTitle'))+'</h3><div class="metric">'+(rx+tx).toFixed(2)+' MiB/s</div><div class="sub mono">'+esc(trf('kpiThroughputRxTx',rx.toFixed(2),tx.toFixed(2)))+'</div></div>'+
+      '<div class="card"><h3>'+esc(tr('kpiThroughputTitle'))+'</h3><div class="metric">'+(rx+tx).toFixed(2)+' MiB/s</div><div class="sub mono">'+esc(trf('kpiThroughputRxTx',rx.toFixed(2),tx.toFixed(2)))+'</div><div class="sub mono">'+esc(tr('kpiDelta5'))+': '+esc(net5)+' · '+esc(tr('kpiDelta15'))+': '+esc(net15)+'</div><div class="sub mono">lat '+esc(tr('kpiDelta5'))+': '+esc(lat5)+' · '+esc(tr('kpiDelta15'))+': '+esc(lat15)+'</div></div>'+
       '<div class="card card--interactive" id="tempCard" title="'+esc(tr('tempCardHint'))+'"><h3>'+esc(tr('kpiTempTitle'))+'</h3><div class="metric '+tempCls+'">'+esc(tempMetric)+'</div><div class="sub mono">'+esc(tempSub)+'</div></div>';
     drawScoreRing(score);
 
@@ -712,6 +741,7 @@ async function load(){
         openAlertDetail(al[i]);
       });
     });
+    renderTimeline(d);
 
     const disk=d.disks||[];
     document.getElementById('disk').innerHTML='<tr><th>'+esc(tr('diskThVol'))+'</th><th>'+esc(tr('diskThFreeGb'))+'</th><th>'+esc(tr('diskThFreePct'))+'</th></tr>'+disk.map(x=>`<tr><td>${esc(x.deviceId)} ${esc(x.label||'')}</td><td>${x.freeGB}</td><td>${x.freePct}</td></tr>`).join('');
@@ -758,61 +788,21 @@ async function load(){
   }catch(e){console.error(e)}
 }
 
-document.getElementById('applyF').onclick=()=>load();
-function wireFilterAutoApply(){
-  ['fSevCrit','fSevWarn','fSevInfo'].forEach(id=>{
-    const el=document.getElementById(id);
-    if(el) el.addEventListener('change',()=>load());
-  });
-  const sel=document.getElementById('fCode');
-  if(sel) sel.addEventListener('change',()=>load());
-}
-wireFilterAutoApply();
+document.getElementById('btnReport')?.addEventListener('click',()=>buildQuickReport());
 wireChartHover();
 let _chartResizeTimer;
 window.addEventListener('resize',()=>{
   clearTimeout(_chartResizeTimer);
   _chartResizeTimer=setTimeout(()=>{
     try{
-      if(timeMode==='now') redrawChartsFromLive();
-      else redrawChartsFromHistory();
+      redrawChartsFromLive();
     }catch(_){/* */}
   },160);
 });
-function applyQueryFromUrl(){
-  try{
-    const p=new URLSearchParams(location.search);
-    const pe=p.get('preset');
-    if(pe&&['now','15m','1h','24h','7d'].includes(pe)){
-      timeMode=pe;
-      document.querySelectorAll('.tmb[data-m]').forEach(b=>b.classList.toggle('on',b.dataset.m===timeMode));
-      if(timeMode==='now'){
-        live.cpu=[];live.mem=[];live.lat=[];live.net=[];live.score=[];
-        document.getElementById('rangeLbl').textContent=tr('rangeLive');
-      }
-      else document.getElementById('rangeLbl').textContent='';
-    }
-    const tri=p.get('crit'); if(tri==='0'||tri==='1'){const el=document.getElementById('fSevCrit');if(el)el.checked=tri==='1';}
-    const tw=p.get('warn'); if(tw==='0'||tw==='1'){const el=document.getElementById('fSevWarn');if(el)el.checked=tw==='1';}
-    const ti=p.get('info'); if(ti==='0'||ti==='1'){const el=document.getElementById('fSevInfo');if(el)el.checked=ti==='1';}
-    const code=p.get('code');
-    if(code!=null&&code!==''){
-      const sel=document.getElementById('fCode');
-      if(sel){
-        let found=false;
-        for(let i=0;i<sel.options.length;i++){ if(sel.options[i].value===code){ found=true; sel.value=code; break; } }
-        if(!found){ const o=document.createElement('option'); o.value=code; o.textContent=code; sel.appendChild(o); sel.value=code; }
-      }
-    }
-  }catch(e){console.error(e)}
-}
-setInterval(()=>{ load(); if(timeMode!=='now')refreshHistory(); }, 2500);
+setInterval(()=>{ load(); }, 2500);
 (async ()=>{
   await load();
-  const hadQs=location.search.length>1;
-  applyQueryFromUrl();
-  if(hadQs) await load();
-  if(timeMode!=='now') await refreshHistory();
+  await load();
 })();
 </script>
 </body>

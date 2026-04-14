@@ -2,6 +2,8 @@ namespace WSMMonitor;
 
 static class Program
 {
+    private const string CompanionSingleInstanceMutex = @"Local\WSMMonitor.Companion.SingleInstance";
+
     [STAThread]
     static void Main(string[] args)
     {
@@ -21,6 +23,7 @@ static class Program
 
         WsmConfiguration.Load();
         WsmLog.Initialize(WsmConfiguration.Current.Logging);
+        RegisterGlobalExceptionLogging();
 
         if (IsWindowsServiceProcess(args))
         {
@@ -66,9 +69,47 @@ static class Program
             return;
         }
 
+        using var singleInstance = new Mutex(initiallyOwned: true, CompanionSingleInstanceMutex, out var createdNew);
+        if (!createdNew)
+        {
+            MessageBox.Show(WsmLocalization.T("AppAlreadyRunning"), WsmLocalization.T("MsgBoxTitle"), MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+
         ApplicationConfiguration.Initialize();
         Application.ApplicationExit += (_, _) => WsmLog.Close();
         Application.Run(new MainForm(args));
+    }
+
+    private static void RegisterGlobalExceptionLogging()
+    {
+        AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+        {
+            try
+            {
+                if (e.ExceptionObject is Exception ex)
+                    Serilog.Log.Fatal(ex, "Unhandled domain exception");
+                else
+                    Serilog.Log.Fatal("Unhandled domain exception: {Payload}", e.ExceptionObject?.ToString() ?? "<null>");
+            }
+            catch
+            {
+                /* */
+            }
+        };
+
+        TaskScheduler.UnobservedTaskException += (_, e) =>
+        {
+            try
+            {
+                Serilog.Log.Error(e.Exception, "Unobserved task exception");
+                e.SetObserved();
+            }
+            catch
+            {
+                /* */
+            }
+        };
     }
 
     /// <summary>Detect <c>--service</c> from argv and raw command line (SCM sometimes mangles split args).</summary>

@@ -308,15 +308,71 @@ public sealed class MetricsEngine : IDisposable
             using var s = new ManagementObjectSearcher(scope, q);
             foreach (ManagementObject o in s.Get())
             {
+                var health = FormatDiskHealthStatus(o["HealthStatus"]);
+                var op = FormatDiskOperationalStatus(o["OperationalStatus"]);
                 list.Add(new PhysicalDiskRow(
                     o["FriendlyName"]?.ToString() ?? "?",
                     o["MediaType"]?.ToString() ?? "",
-                    o["HealthStatus"]?.ToString() ?? "",
-                    o["OperationalStatus"]?.ToString() ?? ""));
+                    health,
+                    op));
             }
         }
         catch { /* */ }
         return list;
+    }
+
+    private static string FormatDiskHealthStatus(object? raw)
+    {
+        if (raw == null) return "";
+        if (raw is ushort us) return us switch
+        {
+            0 => "Unknown",
+            1 => "Healthy",
+            2 => "Warning",
+            3 => "Unhealthy",
+            _ => us.ToString()
+        };
+        if (ushort.TryParse(raw.ToString(), out var parsed))
+            return FormatDiskHealthStatus(parsed);
+        var text = raw.ToString() ?? "";
+        if (text == "0") return "Unknown";
+        if (text == "1") return "Healthy";
+        if (text == "2") return "Warning";
+        if (text == "3") return "Unhealthy";
+        return text;
+    }
+
+    private static string FormatDiskOperationalStatus(object? raw)
+    {
+        if (raw == null) return "";
+        var text = raw.ToString() ?? "";
+        if (string.IsNullOrWhiteSpace(text)) return "";
+        if (ushort.TryParse(text, out var code))
+        {
+            return code switch
+            {
+                0 => "Unknown",
+                1 => "Other",
+                2 => "OK",
+                3 => "Degraded",
+                6 => "Error",
+                7 => "Non-Recoverable Error",
+                8 => "Starting",
+                9 => "Stopping",
+                10 => "Stopped",
+                11 => "In Service",
+                12 => "No Contact",
+                13 => "Lost Communication",
+                14 => "Aborted",
+                15 => "Dormant",
+                _ => code.ToString()
+            };
+        }
+
+        // Arrays sometimes come from WMI as "System.UInt16[]".
+        if (raw is Array arr && arr.Length > 0)
+            return string.Join(",", arr.Cast<object>().Select(FormatDiskOperationalStatus));
+        return text;
     }
 
     private List<DiskPerfRow> ReadDiskPerfSamples()
@@ -753,10 +809,9 @@ public sealed class MetricsEngine : IDisposable
 
         foreach (var p in phys)
         {
-            if (!string.IsNullOrEmpty(p.HealthStatus) && !p.HealthStatus.Contains("Healthy", StringComparison.OrdinalIgnoreCase))
+            if (IsDiskHealthProblem(p.HealthStatus))
                 a.Add(new AlertRow("critical", "DISK_HW", $"{p.FriendlyName} Health: {p.HealthStatus}", MetricRef("DISK_HW")));
-            if (!string.IsNullOrEmpty(p.OperationalStatus) && !p.OperationalStatus.Contains("OK", StringComparison.OrdinalIgnoreCase)
-                && !p.OperationalStatus.Contains("Online", StringComparison.OrdinalIgnoreCase))
+            if (IsDiskOperationalProblem(p.OperationalStatus))
                 a.Add(new AlertRow("warning", "DISK_OP", $"{p.FriendlyName} Operational: {p.OperationalStatus}", MetricRef("DISK_OP")));
         }
 
@@ -1030,6 +1085,37 @@ public sealed class MetricsEngine : IDisposable
     {
         if (string.IsNullOrEmpty(s)) return s;
         return s.Length <= 48 ? s : s[..45] + "...";
+    }
+
+    private static bool IsDiskHealthProblem(string? status)
+    {
+        if (string.IsNullOrWhiteSpace(status))
+            return false;
+        if (status.Contains("Healthy", StringComparison.OrdinalIgnoreCase))
+            return false;
+        if (status.Contains("Unknown", StringComparison.OrdinalIgnoreCase))
+            return false;
+        return status.Contains("Warning", StringComparison.OrdinalIgnoreCase)
+               || status.Contains("Unhealthy", StringComparison.OrdinalIgnoreCase)
+               || status.Contains("Error", StringComparison.OrdinalIgnoreCase)
+               || status.Contains("Degraded", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsDiskOperationalProblem(string? status)
+    {
+        if (string.IsNullOrWhiteSpace(status))
+            return false;
+        if (status.Contains("OK", StringComparison.OrdinalIgnoreCase)
+            || status.Contains("Online", StringComparison.OrdinalIgnoreCase)
+            || status.Contains("In Service", StringComparison.OrdinalIgnoreCase)
+            || status.Contains("Unknown", StringComparison.OrdinalIgnoreCase))
+            return false;
+        return status.Contains("Error", StringComparison.OrdinalIgnoreCase)
+               || status.Contains("Stopped", StringComparison.OrdinalIgnoreCase)
+               || status.Contains("No Contact", StringComparison.OrdinalIgnoreCase)
+               || status.Contains("Lost Communication", StringComparison.OrdinalIgnoreCase)
+               || status.Contains("Aborted", StringComparison.OrdinalIgnoreCase)
+               || status.Contains("Degraded", StringComparison.OrdinalIgnoreCase);
     }
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]

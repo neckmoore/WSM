@@ -152,6 +152,7 @@ public sealed class MainForm : Form
                 }
 
                 HideToTray();
+                OpenWebDashboard();
             });
         };
         Resize += (_, _) =>
@@ -300,7 +301,7 @@ public sealed class MainForm : Form
     private void BuildTray()
     {
         _trayMenu.Items.Clear();
-        _trayMenu.Items.Add(WsmLocalization.T("TrayShow"), null, (_, _) => ShowStatusWindow());
+        _trayMenu.Items.Add(WsmLocalization.T("TrayStatus"), null, (_, _) => ShowStatusWindow());
         _trayMenu.Items.Add(WsmLocalization.T("TraySettings"), null, (_, _) => OpenSettingsDialog());
         _trayMenu.Items.Add(WsmLocalization.T("TrayDashboard"), null, (_, _) => OpenWebDashboard());
         _trayMenu.Items.Add(WsmLocalization.T("TraySvcStart"), null, (_, _) => ExecuteServiceAction(ServiceControl.StartService));
@@ -347,18 +348,9 @@ public sealed class MainForm : Form
             }
 
             _lastStatus = status;
-            var modeNote = _embeddedRuntime != null
-                ? _dashboardPort == _primaryPort
-                    ? WsmLocalization.Tf("ModeEmbeddedPrimary", _primaryPort)
-                    : WsmLocalization.Tf("ModeEmbeddedAlt", _dashboardPort, _primaryPort)
-                : status.ServiceMode
-                    ? WsmLocalization.Tf("ModeServiceOnly", _primaryPort)
-                    : "";
             var detail = string.IsNullOrWhiteSpace(status.LastError)
                 ? WsmLocalization.T("DetailNoErrors")
                 : status.LastError;
-            if (!string.IsNullOrEmpty(modeNote))
-                detail = modeNote + " " + detail;
             var diagLine = WsmLocalization.Tf(
                 "DiagHbFmt",
                 status.WsmVersion,
@@ -369,8 +361,6 @@ public sealed class MainForm : Form
                 status.Ready);
             var diag = new StringBuilder();
             diag.Append(diagLine);
-            if (!string.IsNullOrWhiteSpace(status.ExePath))
-                diag.Append("\r\n").Append(status.ExePath);
             diag.Append("\r\n");
             SetStatus(
                 status.AgentRunning ? WsmLocalization.T("AgentRunning") : WsmLocalization.T("AgentStopped"),
@@ -378,6 +368,7 @@ public sealed class MainForm : Form
                 status.HttpListening ? WsmLocalization.T("HttpListening") : WsmLocalization.T("HttpNotListening"),
                 string.IsNullOrWhiteSpace(status.LastMetricsAt) ? "-" : status.LastMetricsAt,
                 diag + "\r\n" + WsmLocalization.T("DetailsPrefix") + " " + detail.Trim());
+            RefreshServiceActionButtons();
         }
         catch (Exception ex)
         {
@@ -387,6 +378,7 @@ public sealed class MainForm : Form
                 WsmLocalization.T("HttpUnavailable"),
                 "-",
                 ex.Message);
+            RefreshServiceActionButtons();
         }
         finally
         {
@@ -396,15 +388,8 @@ public sealed class MainForm : Form
 
     private static string ReadServiceStatus()
     {
-        try
-        {
-            using var sc = new System.ServiceProcess.ServiceController(WindowsServiceHost.ServiceNameConst);
-            return $"Service {sc.Status}";
-        }
-        catch
-        {
-            return "Service not installed";
-        }
+        var status = ServiceControl.TryGetStatus();
+        return status is null ? "Service not installed" : $"Service {status.Value}";
     }
 
     private void SetStatus(string agent, string service, string http, string last, string details)
@@ -430,11 +415,29 @@ public sealed class MainForm : Form
             var msg = action();
             _details.Text = WsmLocalization.Tf("DetailsLineFmt", msg);
             _ = HeartbeatAsync();
+            RefreshServiceActionButtons();
         }
         catch (Exception ex)
         {
             MessageBox.Show(ex.Message, WsmLocalization.T("MsgBoxTitle"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+            RefreshServiceActionButtons();
         }
+    }
+
+    private void RefreshServiceActionButtons()
+    {
+        var status = ServiceControl.TryGetStatus();
+        if (status is null)
+        {
+            _btnSvcStart.Enabled = false;
+            _btnSvcStop.Enabled = false;
+            _btnSvcRestart.Enabled = false;
+            return;
+        }
+
+        _btnSvcRestart.Enabled = true;
+        _btnSvcStart.Enabled = status.Value is not (System.ServiceProcess.ServiceControllerStatus.Running or System.ServiceProcess.ServiceControllerStatus.StartPending);
+        _btnSvcStop.Enabled = status.Value is not (System.ServiceProcess.ServiceControllerStatus.Stopped or System.ServiceProcess.ServiceControllerStatus.StopPending);
     }
 
     private void OpenSettingsDialog()

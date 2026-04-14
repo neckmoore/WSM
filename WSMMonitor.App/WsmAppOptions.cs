@@ -60,7 +60,7 @@ public sealed class SigmaSection
 /// <summary>Optional LibreHardwareMonitorLib sensors (temperatures). WMI ACPI path in MetricsEngine is unchanged.</summary>
 public sealed class LibreHardwareMonitorSection
 {
-    public bool Enabled { get; set; }
+    public bool Enabled { get; set; } = true;
 
     /// <summary>CPU package / core temps.</summary>
     public bool Cpu { get; set; } = true;
@@ -69,11 +69,11 @@ public sealed class LibreHardwareMonitorSection
     public bool Motherboard { get; set; } = true;
 
     /// <summary>DIMM / module sensors (can add noise).</summary>
-    public bool MemoryModules { get; set; }
+    public bool MemoryModules { get; set; } = true;
 
-    public bool Storage { get; set; }
-    public bool FanControllers { get; set; }
-    public bool Psu { get; set; }
+    public bool Storage { get; set; } = true;
+    public bool FanControllers { get; set; } = true;
+    public bool Psu { get; set; } = true;
 
     /// <summary>Cap rows merged into API (after WMI list).</summary>
     public int MaxSensors { get; set; } = 48;

@@ -113,34 +113,50 @@ public sealed class AgentRuntime : IDisposable
     {
         try
         {
+            MetricsEngine? engine;
+            AgentHistoryStore? history;
             MetricsDto? m = null;
             var elapsed = TimeSpan.Zero;
             lock (_sync)
             {
                 if (!_running || _engine == null || _history == null) return;
-                try
-                {
-                    var sw = Stopwatch.StartNew();
-                    m = _engine.Collect();
-                    sw.Stop();
-                    elapsed = sw.Elapsed;
-                    _lastMetricsAt = DateTimeOffset.Now;
-                    _lastError = "";
-                    _lastMetricsSnapshot = m;
-                    _history.Add(MetricsHistoryCompact.FromMetricsDto(m));
-                }
-                catch (Exception ex)
+                engine = _engine;
+                history = _history;
+            }
+
+            try
+            {
+                var sw = Stopwatch.StartNew();
+                m = engine.Collect();
+                sw.Stop();
+                elapsed = sw.Elapsed;
+            }
+            catch (Exception ex)
+            {
+                lock (_sync)
                 {
                     _lastError = ex.Message;
-                    try
-                    {
-                        Log.Warning(ex, "Background metrics collect failed");
-                    }
-                    catch
-                    {
-                        /* Serilog unavailable */
-                    }
                 }
+                try
+                {
+                    Log.Warning(ex, "Background metrics collect failed");
+                }
+                catch
+                {
+                    /* Serilog unavailable */
+                }
+                return;
+            }
+
+            lock (_sync)
+            {
+                if (!_running)
+                    return;
+                _lastMetricsAt = DateTimeOffset.Now;
+                _lastError = "";
+                _lastMetricsSnapshot = m;
+                if (m != null && history != null && ReferenceEquals(_history, history))
+                    history.Add(MetricsHistoryCompact.FromMetricsDto(m));
             }
 
             if (m == null) return;
@@ -196,26 +212,45 @@ public sealed class AgentRuntime : IDisposable
 
     public MetricsDto CollectMetrics()
     {
+        MetricsEngine? engine;
         MetricsDto m;
         var elapsed = TimeSpan.Zero;
         lock (_sync)
         {
             if (!_running || _engine == null)
                 throw new InvalidOperationException("Agent is not running.");
+            engine = _engine;
+        }
+
+        try
+        {
+            var sw = Stopwatch.StartNew();
+            m = engine.Collect();
+            sw.Stop();
+            elapsed = sw.Elapsed;
+        }
+        catch (Exception ex)
+        {
+            lock (_sync)
+            {
+                _lastError = ex.Message;
+            }
+            throw;
+        }
+
+        lock (_sync)
+        {
+            if (!_running)
+                throw new InvalidOperationException("Agent is not running.");
             try
             {
-                var sw = Stopwatch.StartNew();
-                m = _engine.Collect();
-                sw.Stop();
-                elapsed = sw.Elapsed;
                 _lastMetricsAt = DateTimeOffset.Now;
                 _lastError = "";
                 _lastMetricsSnapshot = m;
             }
-            catch (Exception ex)
+            catch
             {
-                _lastError = ex.Message;
-                throw;
+                /* */
             }
         }
 

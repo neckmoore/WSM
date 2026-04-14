@@ -101,7 +101,9 @@ public sealed class LibreHardwareThermalCollector : IDisposable
                 continue;
             if (s.Value is not { } v)
                 continue;
-            if (v is < -55 or > 170)
+            // On some hosts, LHM can briefly expose 0.0 for CPU package/core sensors.
+            // Treat that as invalid startup/stale value to avoid false temperature rows.
+            if (v is <= 1 or > 170)
                 continue;
 
             var hwName = Truncate(hw.Name ?? "?", 56);

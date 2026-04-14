@@ -6,7 +6,7 @@ namespace WSMMonitor;
 public sealed class StartupSplashForm : Form
 {
     /// <summary>Minimum time the host should keep this form visible so the animation can be seen.</summary>
-    public const int MinimumHostDisplayMs = 3200;
+    public const int MinimumHostDisplayMs = 4200;
 
     private readonly System.Windows.Forms.Timer _anim = new() { Interval = 40 };
     private readonly AnimPanel _canvas = new() { Size = new Size(200, 200), BackColor = Color.White };

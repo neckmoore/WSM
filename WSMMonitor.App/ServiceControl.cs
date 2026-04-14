@@ -6,6 +6,20 @@ namespace WSMMonitor;
 
 public static class ServiceControl
 {
+    public static ServiceControllerStatus? TryGetStatus()
+    {
+        try
+        {
+            using var sc = new ServiceController(WindowsServiceHost.ServiceNameConst);
+            sc.Refresh();
+            return sc.Status;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     public static bool IsAdministrator()
     {
         using var identity = WindowsIdentity.GetCurrent();
@@ -31,16 +45,24 @@ public static class ServiceControl
     public static string StartService()
     {
         using var sc = new ServiceController(WindowsServiceHost.ServiceNameConst);
-        if (sc.Status != ServiceControllerStatus.Running)
-            sc.Start();
+        sc.Refresh();
+        if (sc.Status == ServiceControllerStatus.Running)
+            return WsmLocalization.T("SvcAlreadyRunning");
+        if (sc.Status == ServiceControllerStatus.StartPending)
+            return WsmLocalization.T("SvcAlreadyStarting");
+        sc.Start();
         return "Service start requested.";
     }
 
     public static string StopService()
     {
         using var sc = new ServiceController(WindowsServiceHost.ServiceNameConst);
-        if (sc.Status != ServiceControllerStatus.Stopped && sc.Status != ServiceControllerStatus.StopPending)
-            sc.Stop();
+        sc.Refresh();
+        if (sc.Status == ServiceControllerStatus.Stopped)
+            return WsmLocalization.T("SvcAlreadyStopped");
+        if (sc.Status == ServiceControllerStatus.StopPending)
+            return WsmLocalization.T("SvcAlreadyStopping");
+        sc.Stop();
         return "Service stop requested.";
     }
 

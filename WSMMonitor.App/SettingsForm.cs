@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.Net.Http.Json;
+using System.Text;
 
 namespace WSMMonitor;
 
@@ -39,6 +41,7 @@ public sealed class SettingsForm : Form
     private Button _btnOk = null!;
     private Button _btnApply = null!;
     private Button _btnCancel = null!;
+    private Button _btnTest = null!;
 
     public SettingsForm()
     {
@@ -77,12 +80,16 @@ public sealed class SettingsForm : Form
         };
         _btnApply = new Button { AutoSize = true };
         _btnApply.Click += (_, _) => TryPersist(closeForm: false);
+        _btnTest = new Button { AutoSize = true };
+        _btnTest.Click += async (_, _) => await RunConfigurationTestAsync();
         _btnCancel = new Button { DialogResult = DialogResult.Cancel, AutoSize = true };
         bottom.Controls.Add(_btnCancel);
         bottom.Controls.Add(_btnApply);
+        bottom.Controls.Add(_btnTest);
         bottom.Controls.Add(_btnOk);
         RegisterText(_btnOk, "BtnOk");
         RegisterText(_btnApply, "BtnApply");
+        RegisterText(_btnTest, "BtnTestConfig");
         RegisterText(_btnCancel, "BtnCancel");
 
         Controls.Add(tabs);
@@ -493,5 +500,75 @@ public sealed class SettingsForm : Form
             MessageBox.Show(WsmLocalization.T("SettingsSaveErr") + ex.Message, WsmLocalization.T("MsgBoxTitle"), MessageBoxButtons.OK, MessageBoxIcon.Error);
             return false;
         }
+    }
+
+    private async Task RunConfigurationTestAsync()
+    {
+        var model = ReadModelFromControls();
+        var sb = new StringBuilder();
+        sb.AppendLine(WsmLocalization.T("ConfigTestHeader"));
+        sb.AppendLine();
+
+        var apiOk = false;
+        try
+        {
+            using var http = new HttpClient
+            {
+                BaseAddress = new Uri($"http://127.0.0.1:{model.Agent.Port}/"),
+                Timeout = TimeSpan.FromSeconds(3)
+            };
+            var st = await http.GetFromJsonAsync<AgentStatusDto>("api/v1/agent-status");
+            apiOk = st != null;
+            sb.AppendLine($"{WsmLocalization.T("ConfigTestApi")}: {(apiOk ? WsmLocalization.T("ConfigTestOk") : WsmLocalization.T("ConfigTestFail"))}");
+        }
+        catch (Exception ex)
+        {
+            sb.AppendLine($"{WsmLocalization.T("ConfigTestApi")}: {WsmLocalization.T("ConfigTestFail")} ({ex.Message})");
+        }
+
+        try
+        {
+            var logPath = model.Logging.Path?.Trim();
+            if (string.IsNullOrWhiteSpace(logPath))
+                logPath = "logs/wsm-.log";
+            var full = Path.IsPathRooted(logPath) ? logPath : Path.Combine(AppContext.BaseDirectory, logPath);
+            var dir = Path.GetDirectoryName(full);
+            if (!string.IsNullOrWhiteSpace(dir))
+                Directory.CreateDirectory(dir);
+            var probe = Path.Combine(dir ?? AppContext.BaseDirectory, $"wsm-write-test-{Guid.NewGuid():N}.tmp");
+            File.WriteAllText(probe, "wsm");
+            File.Delete(probe);
+            sb.AppendLine($"{WsmLocalization.T("ConfigTestLogWrite")}: {WsmLocalization.T("ConfigTestOk")}");
+        }
+        catch (Exception ex)
+        {
+            sb.AppendLine($"{WsmLocalization.T("ConfigTestLogWrite")}: {WsmLocalization.T("ConfigTestFail")} ({ex.Message})");
+        }
+
+        var svc = ServiceControl.TryGetStatus();
+        sb.AppendLine($"{WsmLocalization.T("ConfigTestService")}: {(svc?.ToString() ?? WsmLocalization.T("ConfigTestSvcMissing"))}");
+
+        if (!model.LibreHardwareMonitor.Enabled)
+        {
+            sb.AppendLine($"{WsmLocalization.T("ConfigTestSensors")}: {WsmLocalization.T("ConfigTestSkipped")}");
+        }
+        else
+        {
+            try
+            {
+                var sw = Stopwatch.StartNew();
+                using var c = new LibreHardwareThermalCollector(model.LibreHardwareMonitor);
+                var rows = c.CollectTemperatures();
+                sw.Stop();
+                sb.AppendLine(
+                    $"{WsmLocalization.T("ConfigTestSensors")}: {WsmLocalization.T("ConfigTestOk")} (rows={rows.Count}, {sw.ElapsedMilliseconds} ms)");
+            }
+            catch (Exception ex)
+            {
+                sb.AppendLine($"{WsmLocalization.T("ConfigTestSensors")}: {WsmLocalization.T("ConfigTestFail")} ({ex.Message})");
+            }
+        }
+
+        MessageBox.Show(sb.ToString().TrimEnd(), WsmLocalization.T("ConfigTestTitle"), MessageBoxButtons.OK, MessageBoxIcon.Information);
     }
 }

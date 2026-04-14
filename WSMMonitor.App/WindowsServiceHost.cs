@@ -22,14 +22,17 @@ public sealed class WindowsServiceHost : ServiceBase
         RequestAdditionalTime(120_000);
         try
         {
+            Serilog.Log.Information("WSM service OnStart invoked");
             lock (_sync)
             {
                 _runtime = new AgentRuntime(serviceMode: true, port: WsmConfiguration.Current.Agent.Port);
                 _runtime.Start();
             }
+            Serilog.Log.Information("WSM service started successfully");
         }
         catch (Exception ex)
         {
+            try { Serilog.Log.Fatal(ex, "WSM service failed to start"); } catch { /* */ }
             TryWriteStartupError(ex);
             lock (_sync)
             {
@@ -43,6 +46,7 @@ public sealed class WindowsServiceHost : ServiceBase
 
     protected override void OnStop()
     {
+        try { Serilog.Log.Information("WSM service OnStop invoked"); } catch { /* */ }
         lock (_sync)
         {
             _runtime?.Dispose();
