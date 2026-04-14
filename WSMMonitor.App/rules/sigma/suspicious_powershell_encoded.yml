@@ -1,0 +1,7 @@
+id: sigma.win.powershell.encoded
+title: Suspicious PowerShell EncodedCommand
+severity: high
+eventId: 1
+providerContains: Sysmon
+imageContains: powershell.exe
+commandLineContains: -enc

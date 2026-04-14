@@ -1,0 +1,7 @@
+id: sigma.win.certutil.download
+title: Potential Certutil Download
+severity: warning
+eventId: 1
+providerContains: Sysmon
+imageContains: certutil.exe
+commandLineContains: -urlcache

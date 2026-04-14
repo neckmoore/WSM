@@ -1,0 +1,7 @@
+id: sigma.win.rundll32.suspicious
+title: Suspicious Rundll32 Usage
+severity: warning
+eventId: 1
+providerContains: Sysmon
+imageContains: rundll32.exe
+commandLineContains: javascript:

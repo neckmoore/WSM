@@ -1,0 +1,39 @@
+# Build
+**/bin/
+**/obj/
+**/TestResults/
+**/*.nupkg
+**/*.snupkg
+*.user
+*.suo
+*.userosscache
+*.rsuser
+*.cache
+*.pdb
+*.ipch
+*.opendb
+*.VC.db
+*.DS_Store
+Thumbs.db
+
+# Local overrides (do not commit secrets or machine-specific paths)
+appsettings.local.json
+**/appsettings.local.json
+
+# Runtime local artifacts
+logs/
+**/logs/
+data/
+**/data/
+
+# Publish output (keep source-only repo)
+publish/
+
+# Inno installer staging and output
+installer/staging/
+installer/Output/
+
+# IDE
+.idea/
+.vs/
+.vscode/
